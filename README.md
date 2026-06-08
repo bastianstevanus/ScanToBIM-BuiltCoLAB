@@ -2,7 +2,7 @@
 
 A standalone web application for **Construction Quality Assessment (CQA)** and **Model Quality Assessment (MQA)** using 3D point clouds and IFC BIM models.
 
-Developed as part of a Master's thesis research at the University of Cantabria, in collaboration with **BuiltCoLAB**.
+Developed as part of a Master's thesis research at the University of Porto, in collaboration with **BuiltCoLAB**.
 
 ---
 
