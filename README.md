@@ -128,4 +128,4 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 If you use this tool in research, please acknowledge:
 
-> Situmorang, B.S. (2026). *Scan-to-BIM Quality Assessment Tool*. BuiltCoLAB collaboration, University of Cantabria.
+> Situmorang, B.S. (2026). *Scan-to-BIM Quality Assessment Tool*. BuiltCoLAB collaboration, University of Porto.
