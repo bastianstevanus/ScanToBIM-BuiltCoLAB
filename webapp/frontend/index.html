@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scan-to-BIM Quality Assessment</title>
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="/static/css/style.css" />
+
+  <!-- Three.js ES-module import map -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three":          "https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.module.js",
+      "three/addons/":  "https://cdn.jsdelivr.net/npm/three@0.152.2/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+
+<body class="app-body">
+
+<!-- ── Navbar ─────────────────────────────────────────────────────────── -->
+<nav class="navbar navbar-dark bg-dark px-3 py-2">
+  <span class="navbar-brand fw-bold fs-5">
+    &#x1F4D0; Scan-to-BIM Quality Assessment
+  </span>
+  <div class="d-flex align-items-center gap-2">
+    <span id="project-badge" class="badge bg-secondary fs-6 d-none"></span>
+  </div>
+</nav>
+
+<!-- ── Main layout ────────────────────────────────────────────────────── -->
+<div class="layout-container">
+
+  <!-- ── LEFT SIDEBAR ── -->
+  <aside class="sidebar">
+
+    <!-- Workflow buttons -->
+    <div class="sidebar-section">
+      <p class="sidebar-label">WORKFLOW</p>
+      <div class="d-grid gap-2">
+        <button id="btn-import"   class="btn btn-primary wf-btn">
+          <span class="btn-icon">📁</span> Import Files
+        </button>
+        <button id="btn-register" class="btn btn-secondary wf-btn" disabled>
+          <span class="btn-icon">📐</span> Registration
+        </button>
+        <button id="btn-cqa"      class="btn btn-secondary wf-btn" disabled>
+          <span class="btn-icon">🏗️</span> Construction Quality
+        </button>
+        <button id="btn-mqa"      class="btn btn-secondary wf-btn" disabled>
+          <span class="btn-icon">📋</span> Model Quality
+        </button>
+        <button id="btn-export"   class="btn btn-success  wf-btn" disabled>
+          <span class="btn-icon">📤</span> Export Results
+        </button>
+      </div>
+    </div>
+
+    <!-- Progress bar -->
+    <div class="sidebar-section" id="progress-section" style="display:none;">
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <p class="sidebar-label mb-0">PROGRESS</p>
+        <span id="progress-pct" class="badge bg-secondary">0%</span>
+      </div>
+      <div class="progress mb-2" style="height:14px;">
+        <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated"
+             role="progressbar" style="width:0%" aria-valuenow="0"
+             aria-valuemin="0" aria-valuemax="100"></div>
+      </div>
+      <small id="progress-msg" class="text-white"></small>
+    </div>
+
+    <!-- Registration result panel -->
+    <div class="sidebar-section d-none" id="reg-result-section">
+      <p class="sidebar-label">REGISTRATION RESULT</p>
+      <div class="text-center mb-2">
+        <span id="reg-fitness-badge" class="badge fs-6 px-3 py-2 bg-secondary">Fitness: —</span>
+      </div>
+      <table class="table table-sm table-dark table-borderless mb-0">
+        <tbody>
+          <tr><td class="text-muted">Method</td>
+              <td id="reg-method" class="text-end text-white fw-semibold">—</td></tr>
+          <tr><td class="text-muted">RMSE</td>
+              <td id="reg-rmse"   class="text-end text-white">—</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Upload summary -->
+    <div class="sidebar-section d-none" id="info-section">
+      <p class="sidebar-label">LOADED DATA</p>
+      <table class="table table-sm table-dark table-borderless mb-0">
+        <tbody>
+          <tr><td class="text-muted">Scan points</td>
+              <td id="info-scan-pts" class="text-end text-white">—</td></tr>
+          <tr><td class="text-muted">IFC elements</td>
+              <td id="info-elem-cnt" class="text-end text-white">—</td></tr>
+          <tr><td class="text-muted">Registration</td>
+              <td id="info-reg"      class="text-end text-white">—</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- CQA results panel -->
+    <div class="sidebar-section d-none" id="cqa-panel">
+      <p class="sidebar-label">CONSTRUCTION QUALITY</p>
+      <div id="cqa-stats" class="text-white small"></div>
+      <div id="cqa-table-wrap" class="table-scroll mt-2"></div>
+    </div>
+
+    <!-- MQA results panel -->
+    <div class="sidebar-section d-none" id="mqa-panel">
+      <p class="sidebar-label">MODEL QUALITY</p>
+      <div id="mqa-stats" class="text-white small"></div>
+      <div id="mqa-legend" class="mt-2"></div>
+      <div id="mqa-table-wrap" class="table-scroll mt-2"></div>
+    </div>
+
+    <!-- Colour legend -->
+    <div class="sidebar-section d-none" id="legend-section">
+      <p class="sidebar-label">DEVIATION COLOUR LEGEND</p>
+      <p class="text-center text-white small mb-1" style="font-size:0.75rem;">Deviation (meters)</p>
+      <canvas id="legend-canvas" width="220" height="18" style="width:100%;border-radius:3px;"></canvas>
+      <div id="legend-ticks" class="legend-ticks mt-1"></div>
+    </div>
+
+    <!-- Quality summary panel (appears after CQA/MQA) -->
+    <div class="sidebar-section d-none" id="quality-summary-section">
+      <p class="sidebar-label">QUALITY SUMMARY</p>
+      <div id="quality-summary-body" class="quality-summary"></div>
+    </div>
+
+  </aside>
+
+  <!-- ── 3D VIEWER ── -->
+  <main class="viewer-area">
+    <canvas id="viewer-canvas"></canvas>
+
+    <!-- Viewer mode tabs -->
+    <div id="view-tabs" class="view-tabs d-none">
+      <button class="view-tab active" data-view="scan">Scan</button>
+      <button class="view-tab" data-view="bim">BIM</button>
+      <button class="view-tab" data-view="both">Both</button>
+    </div>
+
+    <!-- Overlay status -->
+    <div id="viewer-overlay" class="viewer-overlay">
+      <div class="spinner-border text-light mb-2" role="status" id="overlay-spinner"
+           style="display:none;"></div>
+      <p id="overlay-msg" class="text-white text-center mb-0">
+        Import an E57 scan and IFC model to begin.
+      </p>
+    </div>
+  </main>
+</div>
+
+<!-- ── Import Modal ────────────────────────────────────────────────────── -->
+<div class="modal fade" id="import-modal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content bg-dark text-white">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title">Import Files</h5>
+        <button type="button" class="btn-close btn-close-white"
+                data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Point Cloud (E57 or PLY)</label>
+          <input type="file" id="e57-input" class="form-control bg-dark text-white border-secondary"
+                 accept=".e57,.ply,.pcd,.xyz,.pts" />
+        </div>
+        <div class="mb-3">
+          <label class="form-label">BIM Model (IFC)</label>
+          <input type="file" id="ifc-input" class="form-control bg-dark text-white border-secondary"
+                 accept=".ifc" />
+        </div>
+        <div id="import-error" class="alert alert-danger d-none"></div>
+      </div>
+      <div class="modal-footer border-secondary">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" id="btn-import-confirm" class="btn btn-primary">
+          Load Files
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Toast notifications ─────────────────────────────────────────────── -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+  <div id="app-toast" class="toast align-items-center text-bg-dark border-0" role="alert">
+    <div class="d-flex">
+      <div id="toast-body" class="toast-body"></div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto"
+              data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<!-- App modules -->
+<script type="module" src="/static/js/main.js"></script>
+</body>
+</html>

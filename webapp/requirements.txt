@@ -1,0 +1,13 @@
+fastapi==0.111.0
+uvicorn[standard]==0.29.0
+python-multipart==0.0.9
+aiofiles>=23.1.0
+numpy>=1.24.0,<2.0
+open3d==0.18.0
+ifcopenshell>=0.7.0
+pye57>=0.4.4
+rdflib>=7.0.0
+scipy>=1.11.0
+matplotlib>=3.7.0
+pandas>=2.0.0
+cryptography>=42.0.0

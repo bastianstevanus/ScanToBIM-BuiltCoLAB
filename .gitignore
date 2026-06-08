@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+.pytest_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# PyInstaller build outputs
+dist/
+build/
+*.spec.bak
+
+# Uploaded / processed files
+webapp/uploads/
+webapp/outputs/
+*.e57
+*.ply
+*.pcd
+
+# SQLite databases
+*.db
+*.sqlite3
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+*.code-workspace
+.idea/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Logs
+*.log
+build_log.txt
+
+# Temporary
+*.bak
+*.bak2
+*.tmp
