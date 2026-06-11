@@ -1,7 +1,3 @@
-"""
-Application-level singleton state.
-All background processing writes results here; API endpoints read from here.
-"""
 import threading
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
