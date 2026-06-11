@@ -1,11 +1,3 @@
-# build_exe.ps1 — Package ScanToBIM into a standalone Windows executable (no license system).
-# Uses ScanToBIM.spec for full control over bundled packages.
-#
-# Output:  dist\ScanToBIM\   ← zip this entire folder to distribute
-#
-# Run from the ScanToBIM-BuiltCoLAB folder:
-#   .\build_exe.ps1
-
 Set-Location $PSScriptRoot
 $ErrorActionPreference = "Stop"
 
