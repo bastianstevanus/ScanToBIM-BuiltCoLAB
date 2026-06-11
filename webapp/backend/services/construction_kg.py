@@ -36,8 +36,6 @@ _CONTEXT_KEYWORDS: Dict[str, List[str]] = {
 
 
 def detect_context(ifc_file, project_name: str = "") -> str:
-    """Scan IFC metadata, storey/space/group names, and a sample of element
-    names for context keywords. Falls back to CommercialBuilding."""
     candidates: List[str] = []
 
     # 1. Project-level entities (most reliable source)
@@ -273,8 +271,7 @@ def classify_severity(mean_dev: float, t_c: float, t_m: float, t_mo: float) -> s
 # ── Knowledge graph builder ────────────────────────────────────────────────────
 
 def _notebook_tolerance(ifc_type_short: str, context: str = "HydraulicStructure"):
-    """Return (t_c, t_m, t_mo, std_ref), importance — context-aware lookup.
-    Kept for backward compat; callers should prefer _get_tolerance() directly."""
+
     importance = _IMPORTANCE.get(f"Ifc{ifc_type_short}", "Low")
     tol = _get_tolerance(context, f"Ifc{ifc_type_short}", importance)
     return tol, importance
