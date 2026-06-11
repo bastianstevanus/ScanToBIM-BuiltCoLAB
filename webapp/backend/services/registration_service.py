@@ -18,7 +18,7 @@ def _to_pcd(pts: np.ndarray) -> o3d.geometry.PointCloud:
 
 
 def _preprocess(pcd: o3d.geometry.PointCloud, voxel_size: float):
-    """Voxel-down, estimate normals, compute FPFH — same as notebook."""
+
     down = pcd.voxel_down_sample(voxel_size)
     down.estimate_normals(
         o3d.geometry.KDTreeSearchParamHybrid(radius=voxel_size * 2.0, max_nn=30))
@@ -32,7 +32,7 @@ def _evaluate(src: o3d.geometry.PointCloud,
                tgt: o3d.geometry.PointCloud,
                T: np.ndarray,
                dist: float) -> Tuple[float, float, float]:
-    """Returns (score, fitness, rmse) — notebook scoring: fitness - 0.35*rmse."""
+
     ev = o3d.pipelines.registration.evaluate_registration(src, tgt, dist, T)
     score = float(ev.fitness - 0.35 * ev.inlier_rmse)
     return score, float(ev.fitness), float(ev.inlier_rmse)
