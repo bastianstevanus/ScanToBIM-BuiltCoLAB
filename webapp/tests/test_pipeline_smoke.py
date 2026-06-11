@@ -1,37 +1,16 @@
-"""
-Smoke tests for Scan-to-BIM pipeline backend.
-
-Run before every PyInstaller rebuild:
-    ..\.venv\Scripts\python.exe -m pytest webapp/tests/test_pipeline_smoke.py -v
-
-No server, no IFC/E57 files required — all tests use synthetic data.
-"""
-
 import sys
 import os
 import types
 import unittest
 
-# ---------------------------------------------------------------------------
 # Make "backend" importable without installing the package
-# ---------------------------------------------------------------------------
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 
-# ===========================================================================
 # 1.  _severity_to_status  (in main.py  AND  export_service.py)
-# ===========================================================================
-class TestSeverityToStatus(unittest.TestCase):
-    """
-    Validation_Status must reflect SEGMENTATION quality only, not deviation magnitude.
 
-    Rules
-    -----
-    * num_candidates == 0            → Need Validation (No Candidates)
-    * num_after_normal_filter == 0   → Need Validation (Normal Filter)
-    * num_segmented < 30             → Need Validation (Low Coverage)
-    * segmentation passed            → Valid  (regardless of deviation severity)
-    """
+class TestSeverityToStatus(unittest.TestCase):
 
     def _status(self, severity: str, stats: dict):
         """Call both independent copies and assert they agree."""
@@ -99,16 +78,9 @@ class TestSeverityToStatus(unittest.TestCase):
         self.assertEqual(self._status("compliant", stats), "Need Validation (Less Than Min Points)")
 
 
-# ===========================================================================
 # 2.  detect_context  (construction_kg.py)
-# ===========================================================================
+
 class TestDetectContext(unittest.TestCase):
-    """
-    Project context detection must:
-    * Recognise hydraulic keywords (reservoir, dam, tank, …)
-    * Default to HydraulicStructure when no keywords match
-    * Not return CommercialBuilding by default (the old bug)
-    """
 
     def _detect(self, ifc_mock):
         from backend.services.construction_kg import detect_context
@@ -148,7 +120,6 @@ class TestDetectContext(unittest.TestCase):
         self.assertEqual(self._detect(ifc), "HydraulicStructure")
 
     def test_default_no_keywords(self):
-        """No recognisable keyword → must default to HydraulicStructure (not CommercialBuilding)."""
         ifc = self._make_ifc(["BuildingXYZ_001"])
         ctx = self._detect(ifc)
         self.assertEqual(ctx, "HydraulicStructure",
@@ -161,7 +132,6 @@ class TestDetectContext(unittest.TestCase):
         self.assertEqual(ctx, "CommercialBuilding")
 
     def test_hydraulic_wins_over_generic(self):
-        """If both hydraulic and other keywords present, hydraulic takes priority."""
         ifc = self._make_ifc(["Reservoir_Office_Complex"])
         self.assertEqual(self._detect(ifc), "HydraulicStructure")
 
@@ -173,17 +143,9 @@ class TestDetectContext(unittest.TestCase):
         self.assertEqual(self._detect(EmptyIfc()), "HydraulicStructure")
 
 
-# ===========================================================================
 # 3.  _build_quality_schedule  (export_service.py)
-# ===========================================================================
+
 class TestBuildQualitySchedule(unittest.TestCase):
-    """
-    _build_quality_schedule must:
-    * Create an IfcWorkSchedule named 'Schedule_Quality'
-    * Create one IfcTask per annotated element
-    * Skip silently on IFC2X3
-    * Not raise exceptions on missing/None data
-    """
 
     def _make_mock_ifc(self, schema_name="IFC4"):
         """Return a minimal mock IFC that records created entities."""
@@ -202,7 +164,7 @@ class TestBuildQualitySchedule(unittest.TestCase):
                 return e
 
         ifc = MockIfc()
-        ifc.schema = schema_name   # set after class creation to avoid closure issue
+        ifc.schema = schema_name
         return ifc, created
 
     def _make_element(self, guid, name="Wall"):
@@ -269,9 +231,9 @@ class TestBuildQualitySchedule(unittest.TestCase):
         self.assertEqual(len(tasks), 5)
 
 
-# ===========================================================================
+
 # 4.  Module import sanity  (no circular imports, no missing deps at startup)
-# ===========================================================================
+
 class TestImports(unittest.TestCase):
     """All backend modules must import cleanly without side-effects."""
 
@@ -294,11 +256,10 @@ class TestImports(unittest.TestCase):
         import backend.services.model_kg  # noqa: F401
 
 
-# ===========================================================================
+
 # 5.  build_construction_kg  (construction_kg.py)  — quick structural check
-# ===========================================================================
+
 class TestBuildConstructionKg(unittest.TestCase):
-    """build_construction_kg must return a non-empty CSV string."""
 
     def test_returns_csv_string_with_header(self):
         from backend.services.construction_kg import build_construction_kg
@@ -333,14 +294,12 @@ class TestBuildConstructionKg(unittest.TestCase):
         self.assertIn("element", report.lower())
 
 
-# ===========================================================================
 if __name__ == "__main__":
     unittest.main(verbosity=2)
 
 
-# ===========================================================================
 # 5.  MQA quality scoring & severity (mean-only formula, never blank)
-# ===========================================================================
+
 class TestMQAQualityScoring(unittest.TestCase):
     def test_quality_score_mean_only_perfect(self):
         from backend.services.mqa_assessment import quality_score
@@ -361,11 +320,11 @@ class TestMQAQualityScoring(unittest.TestCase):
 
     def test_pass_fail_uses_max_and_rmse_not_just_mean(self):
         from backend.services.mqa_assessment import pass_fail
-        # mean small but max above tolerance -> FAIL
+
         self.assertEqual(pass_fail(max_mm=20.0, rmse_mm=5.0, tolerance_mm=15.0), 'FAIL')
-        # rmse > 1.5 * tol -> FAIL
+
         self.assertEqual(pass_fail(max_mm=10.0, rmse_mm=25.0, tolerance_mm=15.0), 'FAIL')
-        # both within bounds -> PASS
+
         self.assertEqual(pass_fail(max_mm=10.0, rmse_mm=10.0, tolerance_mm=15.0), 'PASS')
 
     def test_csv_columns_exact_order(self):
@@ -414,9 +373,8 @@ class TestMQAQualityScoring(unittest.TestCase):
         self.assertNotEqual(cells[-2].strip(), '')
 
 
-# ===========================================================================
 # 6.  Phantom element rejection (critical correctness bug fix)
-# ===========================================================================
+
 class TestPhantomRejection(unittest.TestCase):
     '''An element with no scan points within 100mm of its surface must be
     excluded from results. Phantom segmentation from neighbour surfaces
