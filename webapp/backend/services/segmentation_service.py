@@ -13,8 +13,6 @@ log = logging.getLogger(__name__)
 
 
 # ── Mode-specific parameters ──────────────────────────────────────────────────
-# CQA: Reservoir notebook — larger seed radius, relaxed normal threshold
-# MQA: UC notebook        — tighter seed radius, stricter normal threshold
 
 _CQA_PARAMS: Dict = dict(
     seed_radius               = 0.55,
@@ -119,10 +117,7 @@ def _ransac_plane_filter(
     num_iterations: int,
     min_inlier_ratio: float,
 ) -> Tuple[o3d.geometry.PointCloud, int]:
-    """Fit the dominant plane to scan candidates; return inliers and count.
 
-    Falls back to the full candidate cloud when RANSAC finds too few inliers.
-    """
     n = len(candidate_pcd.points)
     if n < 3:
         return candidate_pcd, n
@@ -164,8 +159,6 @@ def _filter_by_normal_consistency(
         _, idxs   = tree.query(cand_pts, k=1, workers=-1)
         cos_angles = np.abs(np.einsum("ij,ij->i", cand_norms, bim_norms[idxs]))
 
-    # Notebook behaviour: no graceful fallback — points failing the threshold
-    # are rejected, and an element with no surviving points fails downstream.
     keep = np.where(cos_angles >= normal_angle_threshold)[0]
     return candidate_pcd.select_by_index(keep.tolist())
 
@@ -278,8 +271,6 @@ def segment_element(
             min_inlier_ratio=ransac_min_inlier_ratio,
         )
     else:
-        # Non-planar: RANSAC on a curved surface would be wrong.
-        # Use nearest-BIM-point proximity to strip distant stray points.
         num_after_ransac = n_cand
         bim_tree_local   = cKDTree(bim_pts_arr)
         nbp_dists, _     = bim_tree_local.query(
@@ -360,20 +351,7 @@ def segment_all_elements(
     mode: str = "cqa",
     progress: Optional[Callable[[float, str], None]] = None,
 ) -> Tuple[Dict[str, o3d.geometry.PointCloud], Dict[str, Dict]]:
-    """Run the notebook segmentation pipeline for every element.
 
-    mode="cqa"  →  Reservoir notebook parameters
-                   (seed_radius=0.55, normal_angle_threshold=0.50,
-                    edge_max_dist=0.20, max_deviation=0.50, min_points=50)
-    mode="mqa"  →  UC notebook parameters
-                   (seed_radius=0.40, normal_angle_threshold=0.70,
-                    edge_max_dist=0.15, max_deviation=0.30, min_points=25)
-
-    Returns (segment_map, seg_stats):
-        segment_map  – {guid: seg_pcd}  (filtered scan points per element)
-        seg_stats    – {guid: dict}      including pre-computed deviation_arr
-                       so deviation_service can skip re-computation.
-    """
     params = _get_params(mode)
 
     # Pre-compute source numpy arrays once — shared across all per-element
