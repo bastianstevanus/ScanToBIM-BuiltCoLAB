@@ -1,16 +1,3 @@
-"""
-FastAPI backend — Scan-to-BIM Quality Assessment Web Application.
-
-Endpoints:
-  GET  /                        → serves index.html
-  GET  /api/status              → current job status
-  POST /api/upload              → upload .e57 + .ifc files
-  POST /api/register            → start FGR+ICP registration
-  POST /api/cqa                 → Construction Quality Assessment
-  POST /api/mqa                 → Model Quality Assessment
-  GET  /api/viewer-data/{type}  → 3D data for Three.js viewer (type: upload|registration|cqa|mqa)
-  GET  /api/export              → download ZIP with all results
-"""
 from __future__ import annotations
 
 import asyncio
