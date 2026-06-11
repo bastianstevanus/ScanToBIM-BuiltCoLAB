@@ -82,7 +82,7 @@ def load_ifc(
     dup_guids = {g for g in all_guids if all_guids.count(g) > 1}
 
     def _stub_record(element, reason: str) -> Dict:
-        """Empty-geometry record so the element still appears in MQA audit / IFC."""
+
         guid     = getattr(element, "GlobalId", "") or ""
         name     = getattr(element, "Name", "") or ""
         return dict(
