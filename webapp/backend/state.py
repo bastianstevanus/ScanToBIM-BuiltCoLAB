@@ -14,7 +14,6 @@ class JobStatus:
 
 
 class AppState:
-    """Thread-safe singleton holding all runtime state."""
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
@@ -65,12 +64,11 @@ class AppState:
         self._mqa_dev_results:  Dict = {}
         self._mqa_kg_csv_str:   str = ""       # BIM_quality_*_knowledge_graph.csv
         self._mqa_dev_csv:      str = ""       # element_deviation_*_graph_segmentation_registration_Revit_API.csv
-        self._mqa_mesh_data: Optional[Dict] = None  # pre-built mesh buffers for viewer
+        self._mqa_mesh_data: Optional[Dict] = None  
 
         # ── export ───────────────────────────────────────────────────────
         self.export_zip_path: Optional[str] = None
-        # Track whether current results have already been exported once.
-        # Re-exporting the same results does not consume credits.
+
         self._cqa_exported: bool = False
         self._mqa_exported: bool = False
 
