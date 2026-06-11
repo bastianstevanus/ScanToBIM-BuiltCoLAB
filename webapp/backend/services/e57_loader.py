@@ -1,10 +1,3 @@
-"""
-E57 point cloud loader.
-
-Uses pye57.read_scan(transform=True) which automatically applies the per-scan
-pose stored in the E57 header, returning points in world/project coordinates.
-Filters invalid points and optionally extracts RGB colour channels.
-"""
 from __future__ import annotations
 
 import logging
@@ -23,11 +16,7 @@ def load_e57(
     max_points: int = MAX_TOTAL_POINTS,
     progress: Optional[Callable[[float, str], None]] = None,
 ) -> Tuple[o3d.geometry.PointCloud, Optional[np.ndarray]]:
-    """
-    Load an E57 file and return (PointCloud, colours_array_or_None).
 
-    colours_array shape: (N, 3) float32 in [0, 1], or None if not available.
-    """
     try:
         import pye57
     except ImportError:
@@ -68,9 +57,6 @@ def load_e57(
             x, y, z = x[valid], y[valid], z[valid]
 
         xyz = np.column_stack([x, y, z]).astype(np.float64)
-        # pye57.read_scan() uses transform=True by default, so the pose
-        # (rotation + translation) is already baked into the XYZ values.
-        # Do NOT apply it again — that would double-transform the coordinates.
 
         # Subsample per scan if needed
         if len(xyz) > max_per_scan:
@@ -130,18 +116,7 @@ def load_point_cloud(
     max_points: int = MAX_TOTAL_POINTS,
     progress: Optional[Callable[[float, str], None]] = None,
 ) -> Tuple[o3d.geometry.PointCloud, Optional[np.ndarray]]:
-    """
-    Unified entry point — dispatches to the right loader based on file extension.
 
-    Supported formats
-    -----------------
-    .e57              → pye57 (multi-scan, with pose)
-    .ply / .pcd / .xyz / .pts / .xyzn / .xyzrgb
-                      → Open3D generic reader
-
-    Note: Autodesk ReCap (.rcp) files are not supported. Export to E57 first:
-          ReCap → File → Export Scan → E57
-    """
     import os
     ext = os.path.splitext(filepath)[1].lower()
 
