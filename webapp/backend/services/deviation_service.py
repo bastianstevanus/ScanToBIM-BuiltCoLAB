@@ -11,8 +11,6 @@ log = logging.getLogger(__name__)
 
 
 # ── CustomName: storey-based per-category naming ─────────────────────────────
-# Format: "{Category} {LevelNumber}{LetterSuffix}"
-# Letters increment per (level, category) bucket in iteration order.
 
 def _number_to_letters(n: int) -> str:
     letters = ""
@@ -56,7 +54,7 @@ def _estimate_element_z(element) -> Optional[float]:
 
 
 def _get_storey_info(ifc_file):
-    """Return (level_by_gid, elev_levels) for storey resolution."""
+
     if ifc_file is None:
         return {}, []
     try:
@@ -129,7 +127,7 @@ def assign_custom_names(elements_data: list, ifc_file) -> Dict[str, str]:
 
 def _point_to_plane_dev(pt: np.ndarray, bim_pts: np.ndarray,
                          bim_normals: np.ndarray, tree: o3d.geometry.KDTreeFlann) -> float:
-    """Signed distance from pt to the nearest BIM facet's plane."""
+
     k, idx, _ = tree.search_knn_vector_3d(pt, 1)
     if k == 0:
         return 0.0
@@ -202,8 +200,6 @@ def compute_all_deviations(
 
         if pre_devs is not None:
             # New notebook path — segmentation already handled phantom detection
-            # (segment_element returns None for elements with no real scan coverage,
-            # so they never reach compute_all_deviations). Use deviation directly.
             filtered_devs = pre_devs
             filtered_seg  = seg_pcd  # already max-deviation-filtered by segmentation
         else:
@@ -287,11 +283,9 @@ def compute_all_deviations(
             stats["num_candidates"]          = st.get("num_candidates", 0)
             stats["num_after_normal_filter"] = st.get("num_after_normal_filter", 0)
             stats["num_segmented"]           = st.get("num_segmented", 0)
-            # Propagate mode-specific max_deviation so the colormap can use
-            # a fixed scale identical to the notebook (0.50 CQA / 0.30 MQA).
+
             stats["max_deviation_used"]      = float(st.get("max_deviation_used", 0.0))
-            # Preserve fail_reason already set above; only override when
-            # segmentation recorded a reason and we haven't set one yet.
+
             if not stats.get("fail_reason"):
                 stats["fail_reason"] = st.get("fail_reason", "")
         else:
@@ -317,15 +311,14 @@ def apply_jet_colormap(
     colors  = np.full((N, 3), 0.6, dtype=np.float32)  # grey for unmatched pts
 
     if not deviation_results:
-        # Nothing was segmented — return grey cloud
+
         coloured = o3d.geometry.PointCloud()
         coloured.points = source_pcd.points
         coloured.colors = o3d.utility.Vector3dVector(colors.astype(np.float64))
         return coloured, 0.05
 
     if max_dev_visual is None:
-        # Use the segmentation max_deviation as the fixed colour ceiling
-        # (same convention as the Reservoir / UC notebooks).
+
         _maxes = [
             float(v.get("max_deviation_used", 0.0))
             for v in deviation_results.values()
