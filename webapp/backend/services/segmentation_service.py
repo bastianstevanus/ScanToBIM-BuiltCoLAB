@@ -95,7 +95,6 @@ def _deviation_to_plane(
     bim_normal: np.ndarray,
     bim_d: float,
 ) -> np.ndarray:
-    """Analytic perpendicular distance: |dot(p, n) + d|.  O(n), no KDTree."""
     return np.abs(pts_arr @ bim_normal + bim_d).astype(np.float64)
 
 
@@ -104,7 +103,6 @@ def _deviation_nbp(
     bim_pts: np.ndarray,
     bim_tree: cKDTree,
 ) -> np.ndarray:
-    """Nearest-BIM-point Euclidean distance (non-planar elements)."""
     _, idxs = bim_tree.query(pts_arr, k=1, workers=-1)
     return np.linalg.norm(pts_arr - bim_pts[idxs], axis=1).astype(np.float64)
 
