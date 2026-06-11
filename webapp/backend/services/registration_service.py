@@ -1,8 +1,3 @@
-"""
-Registration service — FGR + ICP + yaw-search candidates.
-Directly mirrors Deviation Graph-based_Reservoir_Revit API_Automatic Semantic Web.ipynb
-Steps 3–5 (preprocessing → FGR → ICP candidates → best selection).
-"""
 from __future__ import annotations
 
 import copy
@@ -62,12 +57,7 @@ def run_registration(
     voxel_size: float = 0.1,
     progress: Optional[Callable[[float, str], None]] = None,
 ) -> Dict:
-    """
-    Run FGR + ICP + yaw-search registration.
 
-    Returns dict with keys:
-        aligned_pcd, T, fitness, rmse, method
-    """
 
     def _prog(p: float, msg: str):
         if progress:
