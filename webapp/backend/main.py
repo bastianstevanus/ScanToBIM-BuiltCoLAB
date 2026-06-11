@@ -76,7 +76,7 @@ def _b64_float32(arr: np.ndarray) -> str:
 
 
 def _subsample_pcd(pcd, max_pts: int = 200_000):
-    """Return numpy arrays (pts, colors) subsampled to max_pts."""
+
     pts = np.asarray(pcd.points)
     if pcd.has_colors():
         cols = np.asarray(pcd.colors)
@@ -106,7 +106,7 @@ async def get_status():
 
 @app.post("/api/reset")
 async def reset_state():
-    """Reset all state so the user can start a new session without restarting the server."""
+
     app_state.reset()
     for old in UPLOAD_DIR.glob("*"):
         try: old.unlink()
