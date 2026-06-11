@@ -1,34 +1,3 @@
-"""
-Per-element scan point cloud segmentation — graph-based algorithm from the
-reference notebooks.
-
-Two modes matching the validated notebooks exactly:
-    CQA  (Construction Quality Assessment)  —  Reservoir notebook parameters
-    MQA  (BIM Model Quality Assessment)     —  UC notebook parameters
-
-Pipeline per element (mirrors compute_stats_graph in both notebooks):
-
-    Step 1  Reverse seed query       — find scan points within seed_radius of
-                                       the BIM mesh (vectorized scipy cKDTree)
-    Step 2  BIM plane detection      — RANSAC on front-facing BIM samples;
-                                       returns (normal, d) for planar elements,
-                                       (None, None) for curved/non-planar ones
-    Step 3  RANSAC plane filter      — (planar) keep scan points on dominant
-                                       plane; (non-planar) NBP proximity filter
-    Step 4  Normal consistency        — reject points whose normals conflict
-                                       with the BIM face direction
-    Step 5  BIM-plane proximity      — (planar) tight perpendicular distance
-                                       pre-filter (bim_plane_tight_threshold)
-    Step 6  Graph segmentation       — vectorized KNN graph (scipy COO matrix)
-                                       → single largest connected component
-    Step 7  Deviation computation    — analytic plane distance (planar) or
-                                       nearest-BIM-point Euclidean (non-planar)
-    Step 8  Max-deviation filter     — discard points beyond max_deviation
-
-Returns (seg_pcd, deviation_arr) per element.
-The pre-computed deviation_arr is stored in seg_stats so deviation_service can
-use it directly without re-computing.
-"""
 from __future__ import annotations
 
 import logging
@@ -87,12 +56,7 @@ def _get_bim_plane(
     min_inlier_ratio: float = 0.50,
     num_iterations: int = 200,
 ) -> Tuple[Optional[np.ndarray], Optional[float]]:
-    """RANSAC plane fit on front-facing BIM samples.
 
-    Returns (unit_normal, d) when the element is predominantly planar
-    (≥ min_inlier_ratio of front-facing BIM samples are inliers).
-    Returns (None, None) for non-planar elements (round columns, arches, …).
-    """
     pts = np.asarray(target_pcd.points)
     n = len(pts)
     if n < 3:
@@ -183,13 +147,7 @@ def _filter_by_normal_consistency(
     bim_normal: Optional[np.ndarray],
     normal_angle_threshold: float,
 ) -> o3d.geometry.PointCloud:
-    """Reject scan points whose normals conflict with the BIM face direction.
 
-    Planar elements: fast O(n) dot product against the single BIM normal.
-    Non-planar elements: nearest-BIM-point normals via scipy cKDTree.
-
-    When all points are rejected, returns the input unchanged (fallback).
-    """
     cand_pts   = np.asarray(candidate_pcd.points)
     if len(cand_pts) == 0 or not candidate_pcd.has_normals():
         return candidate_pcd
@@ -219,12 +177,7 @@ def _graph_segment_element(
     knn_k: int,
     edge_max_dist: float,
 ) -> o3d.geometry.PointCloud:
-    """Vectorized KNN graph (scipy COO matrix); returns only the single
-    largest connected component.
 
-    This eliminates back-face and adjacent-surface points that would
-    otherwise create false deviation gradients at element boundaries.
-    """
     pts = np.asarray(candidate_pcd.points)
     n   = len(pts)
     if n < 2:
@@ -280,14 +233,7 @@ def segment_element(
     min_points: int,
     _stat_bucket: Optional[Dict] = None,
 ) -> Optional[Tuple[o3d.geometry.PointCloud, np.ndarray]]:
-    """Segment scan points belonging to one BIM element.
 
-    Implements compute_stats_graph() from the reference notebooks.
-
-    Returns:
-        (seg_pcd, deviation_arr) — filtered scan points and per-point
-        deviation values (metres), or None if no valid points found.
-    """
     def _ws(**kw) -> None:
         if _stat_bucket is not None:
             _stat_bucket.update(kw)
@@ -358,13 +304,6 @@ def segment_element(
         return None
 
     # ── Step 5: BIM-plane proximity pre-filter (planar only) ─────────────
-    # Gate is max_deviation (not the tighter bim_plane_tight_threshold).
-    # Rationale: this step's job is to remove back-face / adjacent-surface
-    # candidates before graph segmentation.  Using bim_plane_tight_threshold
-    # (0.15 m) would silently discard scan points on elements whose systematic
-    # deviation is 0.16–0.50 m (CQA) or 0.16–0.30 m (MQA) — the very defects
-    # the assessment is designed to detect.  max_deviation keeps all plausibly-
-    # deviated scan points in the graph; Step 8 is the authoritative outlier gate.
     if bim_normal is not None:
         pts_arr    = np.asarray(candidate_pcd.points)
         plane_dist = np.abs(pts_arr @ bim_normal + bim_d)
