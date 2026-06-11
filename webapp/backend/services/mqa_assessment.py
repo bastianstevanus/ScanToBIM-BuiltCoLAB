@@ -19,7 +19,6 @@ _FAIL_REASON_STATUS: Dict[str, str] = {
 
 
 def _deviation_status(stats: Dict) -> str:
-    """Derive the Validation_Status label from segmentation/deviation stats."""
     reason = (stats.get("fail_reason") or "").strip()
     if reason in _FAIL_REASON_STATUS:
         return _FAIL_REASON_STATUS[reason]
@@ -58,7 +57,6 @@ _LOD_DEFAULT: Tuple[str, float] = ("LOD 300", 15.0)
 
 
 def get_lod(ifc_type: str) -> Tuple[str, float]:
-    """Return (lod_label, tolerance_mm) for an IFC type."""
     return _LOD_MAP.get(ifc_type, _LOD_DEFAULT)
 
 
@@ -88,8 +86,7 @@ def pass_fail(max_mm: float, rmse_mm: float, tolerance_mm: float) -> str:
 def _severity_label(severity: str) -> str:
     s = (severity or "").strip()
     if not s:
-        return "Compliant"  # default: never blank in output
-    # Normalise capitalisation
+        return "Compliant"  
     sl = s.lower()
     if sl == "compliant":            return "Compliant"
     if sl == "minor":                return "Minor"
@@ -167,7 +164,7 @@ def build_mqa_deviation_csv(deviation_results: Dict[str, Dict],
                 continue
             ifc_type = ed.get("ifc_type", "")
             lod_label, tol_mm = get_lod(ifc_type)
-            # Reason: prefer mqa_results geometry/audit reason, else generic
+     
             mqa_entry = (mqa_results or {}).get(gid, {})
             _v = ed.get("verts")
             if _v is None or (hasattr(_v, "__len__") and len(_v) == 0):
