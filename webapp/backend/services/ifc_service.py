@@ -1,7 +1,3 @@
-"""
-IFC loader — tessellates all structural elements into Open3D meshes / point clouds.
-Mirrors artificial_pcd() and build_target_pcd() from the reference notebooks.
-"""
 from __future__ import annotations
 
 import logging
@@ -37,20 +33,7 @@ def load_ifc(
     progress: Optional[Callable[[float, str], None]] = None,
     scan_pcd: Optional[o3d.geometry.PointCloud] = None,
 ) -> Tuple[object, str, List[Dict], o3d.geometry.PointCloud, o3d.geometry.TriangleMesh]:
-    """
-    Returns:
-        ifc_file          – ifcopenshell.file
-        project_name      – string
-        elements_data     – list of per-element dicts
-        combined_bim_pcd  – o3d.PointCloud sampled from all element meshes
-        combined_bim_mesh – o3d.TriangleMesh  (all elements merged)
 
-    When `scan_pcd` is provided, sampled BIM points are filtered to keep only
-    the surface facing the scanner (i.e. their oriented face normal points
-    toward the scan centroid). This removes the back/inside face so the
-    resulting BIM point cloud matches the captured-side surface of each
-    element instead of giving the solid a "thickness".
-    """
     import ifcopenshell
     import ifcopenshell.geom
     import ifcopenshell.util.element as ifc_util
@@ -140,20 +123,7 @@ def load_ifc(
             mesh.remove_unreferenced_vertices()
 
             # ── Area-proportional sampling ─────────────────────────────────
-            # Large structural surfaces (walls, slabs, columns) need far more
-            # points than small objects (windows, pipes, fittings) so that the
-            # segmentation algorithm has a dense enough BIM reference cloud to
-            # match against the scan.
-            #
-            # Strategy:
-            #   1. Compute element surface area (m²).
-            #   2. Scale target density by IFC type:
-            #        large structural surfaces  → 8 000 pts/m²  (cap 100 000)
-            #        small detail elements      →   200 pts/m²
-            #        everything else            →   500 pts/m²
-            #   3. Clamp to [n_pts_min, per-type cap].
-            #   4. Hard upper-bound: 5 × vertex count (can't add detail the
-            #      mesh doesn't have).
+
             _ifc_type_lower = element.is_a().lower()
             _DENSE_TYPES = {
                 "ifcwall", "ifcwallstandardcase", "ifcwallelementedcase",
@@ -161,9 +131,7 @@ def load_ifc(
                 "ifccolumn", "ifcbeam", "ifcplate", "ifcfooting",
                 "ifccurtainwall", "ifcramp", "ifcstair",
             }
-            # Small/detail elements (windows, doors, openings, fittings) get a
-            # lower density so their point count stays proportional to their size
-            # rather than overwhelming large structural surfaces.
+
             _SMALL_TYPES = {
                 "ifcwindow", "ifcdoor", "ifcopeningelement",
                 "ifcfurnishingelement", "ifcflowsegment", "ifcflowterminal",
@@ -192,9 +160,7 @@ def load_ifc(
             n_pts = max(_n_pts_min, min(_n_pts_cap, n_pts))
             n_pts = min(n_pts, len(verts) * 5)
             n_pts = max(n_pts, _n_pts_min)        # never below floor
-            # Sample with per-point triangle normals so we can drop the
-            # back-facing side later (keeps the BIM cloud "flat" on the
-            # scan-facing surface — issue #6 in user feedback).
+
             try:
                 elem_pcd = mesh.sample_points_uniformly(
                     number_of_points=n_pts, use_triangle_normal=True)
@@ -219,8 +185,6 @@ def load_ifc(
             name   = getattr(element, "Name",     "") or ""
             ifc_type = element.is_a()
 
-            # BIM volume: try closed-volume first, then bounding-box fallback for
-            # non-watertight meshes (IfcCovering, MEP elements, etc.)
             try:
                 vol = mesh.get_volume()
             except Exception:
