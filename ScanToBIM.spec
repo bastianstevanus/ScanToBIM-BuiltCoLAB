@@ -1,7 +1,3 @@
-# -*- mode: python ; coding: utf-8 -*-
-# PyInstaller spec for ScanToBIM standalone distribution (no license system).
-# Run:  .venv\Scripts\python.exe -m PyInstaller ScanToBIM.spec --noconfirm
-
 from PyInstaller.utils.hooks import collect_all, collect_data_files
 
 block_cipher = None
@@ -71,7 +67,7 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=False,
-    console=True,          # Shows a console window — useful to see errors
+    console=True,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
