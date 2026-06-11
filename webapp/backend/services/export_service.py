@@ -765,8 +765,6 @@ def create_export_zip(
                 zf.writestr(f"{safe}_original.ifc", raw)
                 ifc_bytes = raw
 
-        # ── Best-effort IFC2X3 downgrade for Revit Open IFC ──────────
-
 
         # ── HTML Schedule Report (two-tab, opens in any browser) ─────
         html_bytes = _create_schedule_html(
