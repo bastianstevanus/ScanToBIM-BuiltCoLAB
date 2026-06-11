@@ -1,40 +1,3 @@
-"""
-MQA deviation CSV builder.
-
-Produces a single CSV for Model Quality Assessment (MQA) mode that combines
-raw deviation metrics with LOD-based engineering quality assessment.
-
-Columns (in exact order):
-  ElementID, CustomName, GlobalId, FamilyName, IFCType,
-  LOD_Level, Tolerance_mm,
-  NumPoints, NumCandidates, NumAfterNormalFilter, NumSegmented,
-  Deviation_Status,
-  Max_Deviation_m, Std_Deviation_m, RMSE_m, Mean_Deviation_m,
-  Quality_Score, Grade, Pass_Fail_Status, Severity,
-  BIM_Volume_m3
-
-LOD mapping:
-  LOD 350 (±10 mm) — IfcBeam, IfcColumn, IfcMember, IfcPlate,
-                      IfcPipeSegment, IfcDuctSegment, IfcFlowFitting, IfcFlowTerminal
-  LOD 300 (±15 mm) — IfcWall, IfcSlab, IfcRoof, IfcStair, IfcRamp,
-                      IfcDoor, IfcWindow, IfcCovering, IfcFooting, IfcPile
-  Default           — LOD 300 (±15 mm)
-
-Quality_Score (mean-deviation-only, mean is the most stable & representative
-indicator; RMSE and Max are sensitive to outliers and would skew the score):
-  score = 100 × (1 - clamp(mean_mm / tolerance_mm, 0, 1))
-
-Grade:
-  ≥ 90 → A (Excellent)
-  ≥ 75 → B (Good)
-  ≥ 60 → C (Fair)
-  <  60 → D (Poor)
-
-Pass_Fail (engineering safety net — must catch outliers Quality_Score misses):
-  FAIL if Max_Deviation > Tolerance  OR  RMSE > 1.5 × Tolerance
-  PASS otherwise
-"""
-
 import csv
 import io
 from typing import Dict, List, Optional, Tuple
@@ -102,16 +65,7 @@ def get_lod(ifc_type: str) -> Tuple[str, float]:
 # ── Quality scoring (mean-only) ──────────────────────────────────────────────
 
 def quality_score(mean_mm: float, tolerance_mm: float) -> float:
-    """
-    Quality_Score (0–100) based on mean deviation only.
 
-    Calibration (tol = 15 mm):
-      mean =  0 mm  → 100  (A)
-      mean =  1.5mm →  90  (A)
-      mean =  3.75mm→  75  (B boundary)
-      mean =  6.0mm →  60  (C boundary)
-      mean ≥ 15 mm  →   0  (D)
-    """
     t = max(tolerance_mm, 1e-6)
     norm = min(max(mean_mm / t, 0.0), 1.0)
     return round(100.0 * (1.0 - norm), 1)
@@ -149,17 +103,7 @@ def _severity_label(severity: str) -> str:
 def build_mqa_deviation_csv(deviation_results: Dict[str, Dict],
                             elements_data: Optional[List[Dict]] = None,
                             mqa_results: Optional[Dict[str, Dict]] = None) -> str:
-    """
-    Build the single MQA deviation+quality CSV.
 
-    The deviation_results dict must already have `severity` populated for
-    every element (call _ensure_cqa_fields() before this function).
-
-    If `elements_data` is supplied, any element present in elements_data but
-    missing from `deviation_results` is appended in a trailing
-    "Not Segmented / Not Found Elements" section (so users see which BIM
-    elements were skipped during segmentation).
-    """
     buf = io.StringIO()
     w   = csv.writer(buf)
     w.writerow([
@@ -264,11 +208,7 @@ def build_mqa_deviation_csv(deviation_results: Dict[str, Dict],
 
 
 def enrich_stats_with_quality(deviation_results: Dict[str, Dict]) -> None:
-    """
-    In-place: add lod_label, tolerance_mm, quality_score, grade, pass_fail
-    fields to every element's stats dict.  Used by IFC pset, HTML schedule,
-    and the frontend table so all output channels show identical values.
-    """
+
     for s in deviation_results.values():
         ifc_type = s.get("ifc_type", "")
         lod_label, tol_mm = get_lod(ifc_type)
