@@ -55,7 +55,7 @@ _QUALITY_COLORS = {
 
 
 def _quality_level(issues: List[Tuple[str, str]]) -> str:
-    """issues = list of (issue_id, severity)."""
+
     n_critical = sum(1 for _, s in issues if s == "Critical")
     n_total    = len(issues)
     for level, max_crit, max_total in QUALITY_THRESHOLDS:
@@ -71,7 +71,7 @@ def _safe_uri(text: str) -> str:
 # ── Material helper ────────────────────────────────────────────────────────────
 
 def _get_material(element) -> Optional[str]:
-    """Return comma-joined material name string, or None."""
+
     try:
         for rel in (getattr(element, "HasAssociations", []) or []):
             if not rel.is_a("IfcRelAssociatesMaterial"):
@@ -103,7 +103,7 @@ def _get_material(element) -> Optional[str]:
 
 
 def _get_bool_prop(psets: dict, prop_name: str) -> Optional[bool]:
-    """Return True/False/None for a named boolean property across all Psets."""
+
     for props in psets.values():
         if not isinstance(props, dict):
             continue
@@ -117,7 +117,7 @@ def _get_bool_prop(psets: dict, prop_name: str) -> Optional[bool]:
 
 
 def _get_element_storey_gid(element) -> Optional[str]:
-    """Walk IFC containment graph upward to find parent IfcBuildingStorey GlobalId."""
+
     relations = list(getattr(element, "ContainedInStructure", []) or [])
     relations += list(getattr(element, "ReferencedInStructures", []) or [])
     for rel in relations:
