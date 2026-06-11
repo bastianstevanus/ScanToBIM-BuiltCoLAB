@@ -1,13 +1,3 @@
-"""
-Construction Quality Assessment knowledge graph.
-Mirrors Deviation Graph-based_Reservoir_Revit API Semantic Web.ipynb exactly:
-  - Auto-detects project context from IFC metadata keywords
-  - Applies EN 13670 / ISO 4463-1 tolerance standards per element type
-  - Severity individuals (Compliant/Minor/Moderate/Major) with severityLevel int
-  - ToleranceProfile individuals per (type, importance)
-  - Per-element assessment triples queryable by SPARQL
-  - Exports CSV with Q1-Q4 SPARQL sections + summary (matching reference notebook)
-"""
 from __future__ import annotations
 
 import csv
@@ -104,12 +94,8 @@ def detect_context(ifc_file, project_name: str = "") -> str:
         return best_ctx
     # No keywords matched → default to HydraulicStructure (project domain default)
     return "HydraulicStructure"
+  
 
-
-# ── Tolerance standards: (t_compliant, t_minor, t_moderate, standard_ref) ─────
-# Values in metres.  standard_ref is the normative document for the tolerance.
-# CQA (construction quality) uses these for severity classification.
-# MQA (model quality) keeps deviation values but uses "ISO 19650 / IFC4" as ref.
 _TOLERANCES: Dict[str, Dict[str, Dict[str, Tuple[float, float, float, str]]]] = {
     # Hydraulic/water-retaining: tightest tolerances, EN 13670 Cl.2 + EN 1992-3
     "HydraulicStructure": {
@@ -305,16 +291,7 @@ def build_construction_kg(
     context: Optional[str] = None,
     elements_data: Optional[list] = None,
 ) -> Tuple[object, str, str]:
-    """
-    Build RDF knowledge graph matching reference notebook structure exactly.
-    Returns (rdflib.Graph, pre_formatted_csv_string, context_str).
-    The graph has:
-      - Severity individuals with rdfs:label and severityLevel int
-      - ToleranceProfile individuals per (type, importance)
-      - Per-element (BIM.BuildingElement) nodes + Assessment nodes
-      - Storey nodes with rdfs:label
-      - All triples needed for the 4 reference SPARQL queries
-    """
+
     import urllib.parse
     from collections import Counter
     from rdflib import Graph, Namespace, Literal, RDF, RDFS, OWL, XSD
@@ -472,10 +449,7 @@ def build_construction_kg(
 def _build_kg_csv(g, element_severities: Dict[str, str],
                   deviation_results: Dict[str, Dict], context: str,
                   elements_data: Optional[list] = None) -> str:
-    """
-    Run the 4 SPARQL queries over g and produce the Q1-Q4 sectioned CSV
-    matching reference notebook Step 7 exactly.
-    """
+
     from collections import Counter
 
     PREFIXES = """
