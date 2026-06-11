@@ -1,15 +1,3 @@
-"""
-Model Quality Assessment knowledge graph.
-Mirrors Deviation Graph-based_UC_No Registartion_Revit API_Semantic Web.ipynb exactly.
-
-Audits IFC model information quality across 4 dimensions:
-  1. SemanticCorrectness  — valid IFC class, name, storey containment, PredefinedType
-  2. PropertyCompleteness — material, LoadBearing, IsExternal, Tag, Description, Psets
-  3. GeometricConsistency — valid geometry, non-zero volume, non-degenerate bounding box
-  4. SchemaCompliance     — OwnerHistory traceability, unique GlobalId
-
-16 issue types → Excellent / Good / Fair / Poor per element.
-"""
 from __future__ import annotations
 
 import csv
@@ -152,12 +140,7 @@ def _get_element_storey_gid(element) -> Optional[str]:
 # ── Per-element audit ──────────────────────────────────────────────────────────
 
 def audit_all_elements(elements_data: list, ifc_file) -> Dict[str, Dict]:
-    """
-    Audit every element for BIM model quality.
-    Returns {guid: assessment_dict} where each dict has keys:
-      ifc_type, name, material, storey_gid, has_geometry, volume_m3,
-      quality_level, issues [(code, severity)], n_issues, n_critical, n_major, n_minor, color
-    """
+
     try:
         import ifcopenshell.util.element as ifc_element_utils
     except ImportError:
@@ -280,14 +263,7 @@ def build_model_kg(
     dev_results: Optional[Dict[str, Dict]] = None,
     elements_data: Optional[List[Dict]] = None,
 ) -> Tuple[object, str]:
-    """
-    Build RDF graph for BIM model quality — matches UC notebook structure.
-    Returns (rdflib.Graph, kg_csv_str).
 
-    `dev_results` and `elements_data` are optional and used to enrich the
-    CSV with per-element deviation rows and a trailing list of not-segmented /
-    not-found elements.
-    """
     from rdflib import Graph, Namespace, Literal, RDF, RDFS, OWL, XSD
 
     BIM  = Namespace("http://bim.thesis.org/ontology/bim#")
@@ -423,19 +399,7 @@ def _build_kg_csv(g,
                   mqa_results: Optional[Dict[str, Dict]] = None,
                   dev_results: Optional[Dict[str, Dict]] = None,
                   elements_data: Optional[List[Dict]] = None) -> str:
-    """Build the BIM_quality_*.csv.
 
-    Layout:
-      Q0: Per-element BIM quality + deviation summary (joined from
-          mqa_results + dev_results so storey, severity and LOD columns
-          are always populated).
-      Q1: Non-compliant BIM elements (storey from mqa_results, never blank).
-      Q2: Quality level distribution by IFC type.
-      Q3: Most frequent quality issues.
-      Q4: Storey-level audit (storey from mqa_results).
-      Summary: counts + per-dimension breakdown.
-      Trailing: list of elements not segmented / not found in scan.
-    """
     from rdflib import Graph
 
     PREFIXES = """
