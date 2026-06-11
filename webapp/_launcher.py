@@ -1,4 +1,3 @@
-﻿"""Entry point for PyInstaller bundle and direct execution."""
 import sys, os, threading, time, webbrowser
 import uvicorn
 
