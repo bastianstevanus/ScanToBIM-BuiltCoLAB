@@ -1,8 +1,3 @@
-"""
-Launcher: starts the FastAPI backend and optionally opens the browser.
-Run:  python start.py
-Docker: CMD ["python", "start.py"]
-"""
 import os
 import sys
 import threading
@@ -14,7 +9,7 @@ PORT = 8000
 
 
 def _free_port(port: int) -> None:
-    """Kill any process already listening on *port* so this instance can bind."""
+
     try:
         import socket
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -23,7 +18,6 @@ def _free_port(port: int) -> None:
     except OSError:
         return
 
-    # Port is occupied — try to release it
     try:
         import subprocess, signal
         if sys.platform == "win32":
