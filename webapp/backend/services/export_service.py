@@ -1,23 +1,3 @@
-"""
-Export service — assembles per-task ZIP packages.
-
-Two flavors:
-  kind="cqa": Contains:
-    - element_deviation_{project}_graph_segmentation_Revit_API.csv
-    - Construction_quality_{project}_knowledge_graph.csv
-    - element_deviation_{project}_knowledge_graph.ttl
-    - {project}_annotated.ifc                (IFC4 with Pset_DeviationSchedule + IfcGroup for Revit schedules)
-    - {project}_deviation_pointcloud.e57      (jet-colored scan in registered/IFC coordinates)
-    - {project}_schedule_report.html
-
-  kind="mqa": Contains:
-    - element_deviation_{project}_graph_segmentation_registration_Revit_API.csv   (single deviation+quality CSV)
-    - BIM_quality_{project}_knowledge_graph.csv
-    - BIM_quality_{project}_knowledge_graph.ttl
-    - {project}_annotated.ifc                (IFC4 with jet per-element colors + Pset_DeviationSchedule)
-    - {project}_deviation_pointcloud.e57      (jet-colored scan in registered/IFC coordinates)
-    - {project}_schedule_report.html
-"""
 from __future__ import annotations
 
 import logging
@@ -46,23 +26,7 @@ _FAIL_REASON_STATUS: dict[str, str] = {
 
 
 def _severity_to_status(severity: str, stats: dict | None = None) -> str:
-    """Map segmentation stats → Validation_Status label.
 
-    Validation_Status reflects SEGMENTATION quality, not deviation magnitude.
-    Deviation magnitude is reported separately in the Severity column.
-
-    Reasons (set by segment_element fail_reason field):
-      Valid                                   — all checks passed
-      Need Validation (No BIM Points)                       — no source/BIM points found
-      Need Validation (No Nearby Points)                   — AABB crop has 0 scan points
-      Need Validation (No Nearby Surface Points)           — NBP filter removed all points
-      Need Validation (No Dominant Plane Found)            — RANSAC filter removed all points
-      Need Validation (Normal Filter Removed All Points)   — normal consistency filter removed all
-      Need Validation (Proximity Filter Removed All Points)— plane proximity filter removed all
-      Need Validation (No Graph Connectivity)              — KNN graph produced empty cluster
-      Need Validation (All Deviations Out of Range)        — all deviations exceed max_deviation
-      Need Validation (Low Coverage)                       — final result < min_points
-    """
     if stats is not None:
         reason = stats.get("fail_reason", "")
         if reason in _FAIL_REASON_STATUS:
@@ -83,11 +47,7 @@ def _severity_to_status(severity: str, stats: dict | None = None) -> str:
 # ── IFC annotation ────────────────────────────────────────────────────────────
 
 def _ensure_owner_history(ifc):
-    """
-    Return an IfcOwnerHistory entity, creating a minimal one if the file has none.
-    Without this, IfcPropertySet creation silently fails in IFC2X3 where
-    OwnerHistory is a mandatory attribute of all IfcRoot descendants.
-    """
+
     oh_list = ifc.by_type("IfcOwnerHistory")
     if oh_list:
         return oh_list[0]
@@ -106,11 +66,7 @@ def _ensure_owner_history(ifc):
         return None
 
 def _build_data_props(ifc, guid: str, stats: Dict, mqa_entry: Optional[Dict]):
-    """
-    Build the list of IfcPropertySingleValue entries for the combined 'Data' pset.
-    Contains EVERY column from element_deviation_*.csv plus every column
-    from the corresponding knowledge_graph CSV.
-    """
+
     def _label(v):  return ifc.createIfcLabel(str(v) if v is not None else "")
     def _real(v):   return ifc.createIfcReal(float(v) if v is not None else 0.0)
     def _int(v):    return ifc.createIfcInteger(int(v) if v is not None else 0)
@@ -142,8 +98,6 @@ def _build_data_props(ifc, guid: str, stats: Dict, mqa_entry: Optional[Dict]):
     ]
 
     # ── LOD-based engineering quality columns (populated for MQA mode
-    #    by enrich_stats_with_quality; CQA stats also carry these fields
-    #    if enriched). Use blank/0 defaults when missing so the IFC stays
     #    schema-valid for CQA exports.
     props += [
         ifc.createIfcPropertySingleValue("LOD_Level",        None, _label(stats.get("lod_label", "")),                None),
@@ -173,11 +127,7 @@ def _build_data_props(ifc, guid: str, stats: Dict, mqa_entry: Optional[Dict]):
 
 def _build_quality_schedule(ifc, owner_history, annotated_elements,
                             deviation_results, mqa_results, kind: str) -> None:
-    """Create an IfcWorkSchedule named 'Schedule_Quality' containing one
-    IfcTask per annotated element. The schedule entity itself appears in
-    Revit's IFC schedule browser; each IfcTask carries the deviation
-    summary as its TaskId / LongDescription / Description so users see
-    per-element quality data when expanding the schedule."""
+
     import ifcopenshell.guid as guid_mod
     schema = getattr(ifc, "schema", "IFC4").upper()
 
@@ -247,8 +197,7 @@ def _build_quality_schedule(ifc, owner_history, annotated_elements,
             )
             tasks.append((task, element))
             # Attach all CSV columns as individual properties on the task.
-            # Any IFC-aware viewer (Solibri, BIM Collab Zoom, Navisworks) will
-            # expose them as separate columns; Revit shows them via Pset_ import.
+   
             try:
                 task_props = _build_data_props(ifc, guid, stats, mqa_entry)
                 task_pset = ifc.createIfcPropertySet(
@@ -302,11 +251,7 @@ def _annotate_ifc(
     mqa_results: Dict[str, Dict],
     element_colors: Optional[Dict[str, list]] = None,
 ) -> bytes:
-    """
-    Open the original IFC and attach a single combined 'Data' pset per element
-    (containing every column from both relevant CSVs), plus schedule-style psets
-    that Revit IFC import exposes as parameters / makes available in schedules.
-    """
+
     import ifcopenshell
     import ifcopenshell.guid as guid_mod
 
@@ -340,10 +285,7 @@ def _annotate_ifc(
                 "deviation_status",
                 _severity_to_status(stats.get("severity", ""), stats))
         elif use_dev:
-            # Element is in MQA results but has no deviation data (segmentation
-            # failed or no nearby scan points).  Build a placeholder dict that
-            # still carries identity fields from the MQA audit so the IFC
-            # schedule cell shows name/storey/ifc_type rather than blanks.
+
             stats = {"deviation_status": "Need Validation (No Scan Data)"}
             if mqa_entry:
                 stats.update({
@@ -354,17 +296,14 @@ def _annotate_ifc(
                     "volume":       mqa_entry.get("volume_m3", 0.0),
                 })
 
-        # Even when deviation data IS present, identity fields can be empty
-        # (older deviation rows pre-stub).  Fill from the MQA entry so the
-        # Revit-side Pset never shows a blank Name/Storey/IFCType.
+
         if mqa_entry:
             if not stats.get("name"):        stats["name"]        = mqa_entry.get("name", "")
             if not stats.get("ifc_type"):    stats["ifc_type"]    = mqa_entry.get("ifc_type", "")
             if not stats.get("storey"):      stats["storey"]      = mqa_entry.get("storey", "")
             if not stats.get("family_name"): stats["family_name"] = mqa_entry.get("name", "")
 
-        # ── "Pset_DeviationSchedule" — Revit auto-imports Pset_* psets and exposes
-        #    their fields as instance parameters available in Revit Schedules. ──
+
         try:
             data_props = _build_data_props(ifc, guid, stats, mqa_entry)
             data_pset = ifc.createIfcPropertySet(
@@ -379,7 +318,7 @@ def _annotate_ifc(
         except Exception as exc:
             log.warning("Could not attach Pset_DeviationSchedule to %s: %s", guid, exc)
 
-    # Apply per-element surface colors (jet colormap on deviation)
+
     if element_colors:
         try:
             _apply_ifc_element_colors(ifc, element_colors)
@@ -387,9 +326,7 @@ def _annotate_ifc(
             log.warning("IFC element color styling failed: %s", exc)
 
     # ── IfcGroup for Revit schedule discoverability ─────────────────────────
-    # Grouping all annotated elements under a named IfcGroup makes it easy
-    # for the user to pick them as the basis of a Revit schedule (the group
-    # appears as a filter target in Revit's "New Schedule" dialog).
+  
     if annotated_elements:
         try:
             grp = ifc.createIfcGroup(
@@ -404,10 +341,7 @@ def _annotate_ifc(
             log.warning("Could not build IfcGroup for schedule: %s", exc)
 
         # ── IfcWorkSchedule "Schedule_Quality" ──────────────────────────────
-        # Adds an actual schedule entity to the IFC so it appears in Revit's
-        # IFC schedule list (next to the existing "schedule working" /
-        # "schedule typical" the user already sees). Each element becomes an
-        # IfcTask carrying its deviation metadata via the Pset attached above.
+
         try:
             _build_quality_schedule(
                 ifc, owner_history, annotated_elements,
@@ -428,13 +362,7 @@ def _annotate_ifc(
 
 
 def _colored_pcd_to_e57_bytes(colored_pcd, max_pts: int = 500_000) -> Optional[bytes]:
-    """
-    Serialize an Open3D PointCloud with colors to E57 format with RGB color.
 
-    E57 is the standard interchange format for 3D point clouds and is natively
-    importable in Autodesk ReCap, Revit (via ReCap), Navisworks, Leica Cyclone,
-    and other AEC tools. Colors are stored as uint8 RGB per point.
-    """
     if colored_pcd is None:
         return None
     try:
@@ -481,11 +409,7 @@ def _colored_pcd_to_e57_bytes(colored_pcd, max_pts: int = 500_000) -> Optional[b
 
 
 def _strip_element_styles(ifc, element) -> None:
-    """Remove every IfcStyledItem and IfcRelAssociatesMaterial that would
-    override the per-element jet color. Without this, Revit (and many viewers)
-    keep showing the original material color even though our IfcStyledItem
-    is also attached. Called once per element before applying the jet style.
-    """
+
     schema = getattr(ifc, "schema", "IFC4").upper()
     # 1) Drop material associations (they bind to materials that carry styles)
     try:
@@ -513,14 +437,7 @@ def _strip_element_styles(ifc, element) -> None:
 
 
 def _apply_ifc_element_colors(ifc, element_colors: dict) -> None:
-    """
-    Apply jet-color surface styles to IFC elements in-place.
-    element_colors: {guid: [r, g, b]}  (values 0-1 float)
 
-    Strips original material/style first so the new jet color is the only
-    visual style, then attaches an IfcStyledItem to every representation item.
-    Works in both IFC2X3 and IFC4.
-    """
     if not element_colors:
         return
     schema = getattr(ifc, "schema", "IFC4").upper()
@@ -564,12 +481,7 @@ def _create_schedule_html(
     deviation_results: Dict[str, Dict],
     mqa_results: Dict[str, Dict],
 ) -> bytes:
-    """
-    Generate a self-contained HTML schedule report with two tabs:
-      - Tab 1: Element Deviation schedule (matches element_deviation_*.csv)
-      - Tab 2: Knowledge Graph schedule  (matches Construction_quality_* or BIM_quality_*.csv)
-    Opens in any browser, no external dependencies.
-    """
+
     tag = "CQA – Construction Quality" if kind == "cqa" else "MQA – Model Quality"
 
     # ── colour helpers ──────────────────────────────────────────────────────
@@ -589,9 +501,7 @@ def _create_schedule_html(
         return ""
 
     # ── Table 1: Element Deviation ──────────────────────────────────────────
-    # CQA and MQA share the deviation summary but with different columns:
-    #   CQA — Importance/Tolerance/Standard/Severity (construction-quality)
-    #   MQA — LOD_Level/Tolerance_mm/Quality_Score/Grade/Pass_Fail/Severity
+  
     if kind == "mqa":
         t1_headers = [
             "CustomName", "ElementID", "GlobalId", "FamilyName", "IFCType",
@@ -826,7 +736,7 @@ def create_export_zip(
                     construction_ttl)
         else:
             # ── MQA files (only) ──────────────────────────────────────
-            # Single deviation+quality CSV (replaces previous two-CSV split).
+
             if mqa_dev_csv:
                 zf.writestr(
                     f"element_deviation_{safe}_graph_segmentation_registration_Revit_API.csv",
@@ -856,8 +766,7 @@ def create_export_zip(
                 ifc_bytes = raw
 
         # ── Best-effort IFC2X3 downgrade for Revit Open IFC ──────────
-        # Disabled: IFC2X3 downgrade produced corrupt data on user models.
-        # Revit 2024+ handles IFC4 natively via 'Insert > Link IFC'.
+
 
         # ── HTML Schedule Report (two-tab, opens in any browser) ─────
         html_bytes = _create_schedule_html(
